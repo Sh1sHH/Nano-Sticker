@@ -9,6 +9,8 @@ import {
 import {StackNavigationProp} from '@react-navigation/stack';
 import {RootStackParamList} from '@/App';
 import {useAppStore} from '@/stores/appStore';
+import {CreditDisplay} from '@/components/CreditDisplay';
+import {COLORS} from '@/utils/constants';
 
 type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
 
@@ -23,6 +25,10 @@ const HomeScreen: React.FC<Props> = ({navigation}) => {
     navigation.navigate('PhotoSelection');
   };
 
+  const handlePurchaseCredits = () => {
+    navigation.navigate('CreditPurchase');
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
@@ -31,11 +37,13 @@ const HomeScreen: React.FC<Props> = ({navigation}) => {
           Transform your photos into amazing stickers with AI
         </Text>
         
-        <View style={styles.creditsContainer}>
-          <Text style={styles.creditsText}>
-            Credits: {credits}
-          </Text>
-        </View>
+        <CreditDisplay
+          credits={credits}
+          size="large"
+          showPurchaseButton={true}
+          onPurchasePress={handlePurchaseCredits}
+          style={styles.creditsContainer}
+        />
 
         <TouchableOpacity
           style={styles.createButton}
@@ -58,7 +66,7 @@ const HomeScreen: React.FC<Props> = ({navigation}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: COLORS.background,
   },
   content: {
     flex: 1,
@@ -69,37 +77,28 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#1e293b',
+    color: COLORS.black,
     textAlign: 'center',
     marginBottom: 10,
   },
   subtitle: {
     fontSize: 16,
-    color: '#64748b',
+    color: COLORS.secondary,
     textAlign: 'center',
     marginBottom: 40,
   },
   creditsContainer: {
-    backgroundColor: '#e0e7ff',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
     marginBottom: 40,
   },
-  creditsText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#3730a3',
-  },
   createButton: {
-    backgroundColor: '#6366f1',
+    backgroundColor: COLORS.primary,
     paddingHorizontal: 40,
     paddingVertical: 16,
     borderRadius: 12,
     marginBottom: 40,
   },
   createButtonText: {
-    color: '#fff',
+    color: COLORS.white,
     fontSize: 18,
     fontWeight: '600',
   },
@@ -109,12 +108,12 @@ const styles = StyleSheet.create({
   featuresTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1e293b',
+    color: COLORS.black,
     marginBottom: 10,
   },
   featureItem: {
     fontSize: 14,
-    color: '#64748b',
+    color: COLORS.secondary,
     marginBottom: 5,
   },
 });

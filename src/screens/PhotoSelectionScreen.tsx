@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useState} from 'react';
 import {
     View,
     Text,
@@ -10,6 +10,8 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '@/App';
 import { useAppStore } from '@/stores/appStore';
 import PhotoSelectionComponent from '@/components/PhotoSelectionComponent';
+import {CreditDisplay, InsufficientCreditsModal} from '@/components';
+import {COLORS, CREDIT_COSTS} from '@/utils/constants';
 
 type PhotoSelectionScreenNavigationProp = StackNavigationProp<
     RootStackParamList,
@@ -21,11 +23,23 @@ interface Props {
 }
 
 const PhotoSelectionScreen: React.FC<Props> = ({ navigation }) => {
-    const { setSelectedImageUri } = useAppStore();
+    const { setSelectedImageUri, credits } = useAppStore();
+    const [showInsufficientCreditsModal, setShowInsufficientCreditsModal] = useState(false);
 
     const handleImageSelected = (imageUri: string) => {
+        // Check if user has enough credits
+        if (credits < CREDIT_COSTS.STICKER_GENERATION) {
+            setShowInsufficientCreditsModal(true);
+            return;
+        }
+
         setSelectedImageUri(imageUri);
         navigation.navigate('Segmentation', { imageUri });
+    };
+
+    const handlePurchaseCredits = () => {
+        setShowInsufficientCreditsModal(false);
+        navigation.navigate('CreditPurchase');
     };
 
     const handleError = (error: string) => {
@@ -35,6 +49,14 @@ const PhotoSelectionScreen: React.FC<Props> = ({ navigation }) => {
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.content}>
+                <CreditDisplay
+                    credits={credits}
+                    size="small"
+                    showPurchaseButton={true}
+                    onPurchasePress={handlePurchaseCredits}
+                    style={styles.creditDisplay}
+                />
+
                 <Text style={styles.title}>Select a Photo</Text>
                 <Text style={styles.subtitle}>
                     Choose a photo to transform into a sticker
@@ -51,6 +73,15 @@ const PhotoSelectionScreen: React.FC<Props> = ({ navigation }) => {
                     }}
                 />
             </View>
+
+            <InsufficientCreditsModal
+                visible={showInsufficientCreditsModal}
+                onClose={() => setShowInsufficientCreditsModal(false)}
+                onPurchasePress={handlePurchaseCredits}
+                requiredCredits={CREDIT_COSTS.STICKER_GENERATION}
+                currentCredits={credits}
+                action="create a sticker"
+            />
         </SafeAreaView>
     );
 };
@@ -58,27 +89,34 @@ const PhotoSelectionScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f8fafc',
+        backgroundColor: COLORS.background,
     },
     content: {
         flex: 1,
         padding: 20,
         justifyContent: 'center',
     },
+    creditDisplay: {
+        position: 'absolute',
+        top: 20,
+        left: 20,
+        right: 20,
+        zIndex: 1,
+    },
     title: {
         fontSize: 28,
         fontWeight: 'bold',
-        color: '#1e293b',
+        color: COLORS.black,
         textAlign: 'center',
         marginBottom: 10,
+        marginTop: 60, // Account for credit display
     },
     subtitle: {
         fontSize: 16,
-        color: '#64748b',
+        color: COLORS.secondary,
         textAlign: 'center',
         marginBottom: 40,
     },
-
 });
 
 export default PhotoSelectionScreen;

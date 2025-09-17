@@ -4,10 +4,19 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 
+import { errorMiddleware } from './middleware/errorHandler';
+import { 
+  requestTrackingMiddleware, 
+  performanceMiddleware, 
+  rateLimitingMiddleware,
+  costTrackingMiddleware,
+  userActivityMiddleware 
+} from './middleware/monitoring';
 import authRoutes from './routes/auth';
 import creditRoutes from './routes/credits';
 import paymentRoutes from './routes/payments';
 import subscriptionRoutes from './routes/subscriptions';
+import analyticsRoutes from './routes/analytics';
 
 // Load environment variables
 dotenv.config();
@@ -22,22 +31,14 @@ app.use(cors({
   credentials: true
 }));
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
-  message: {
-    success: false,
-    error: {
-      code: 'RATE_LIMIT_EXCEEDED',
-      message: 'Too many requests from this IP, please try again later',
-      retryable: true
-    },
-    timestamp: new Date()
-  }
-});
+// Monitoring middleware
+app.use(requestTrackingMiddleware);
+app.use(performanceMiddleware);
+app.use(costTrackingMiddleware);
+app.use(userActivityMiddleware);
 
-app.use(limiter);
+// Rate limiting with monitoring
+app.use(rateLimitingMiddleware());
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
@@ -60,6 +61,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/credits', creditRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
@@ -75,19 +77,7 @@ app.use('*', (req, res) => {
 });
 
 // Global error handler
-app.use((error: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('Unhandled error:', error);
-  
-  res.status(500).json({
-    success: false,
-    error: {
-      code: 'INTERNAL_ERROR',
-      message: 'Internal server error',
-      retryable: true
-    },
-    timestamp: new Date()
-  });
-});
+app.use(errorMiddleware);
 
 // Start server
 if (process.env.NODE_ENV !== 'test') {

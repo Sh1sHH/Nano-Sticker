@@ -15,8 +15,12 @@ import {RouteProp} from '@react-navigation/native';
 import {RootStackParamList} from '@/App';
 import {useAppStore} from '@/stores/appStore';
 import {AIService} from '@/services/aiService';
-import {EMOTIONS} from '@/utils/constants';
+import {EMOTIONS, COLORS} from '@/utils/constants';
 import {GeneratedSticker} from '@/types';
+import {AIProcessingAnimation} from '@/components/AIProcessingAnimation';
+import {ScreenTransition} from '@/components/ScreenTransition';
+import {CreditUsageNotification} from '@/components/CreditUsageNotification';
+import {useCreditManagement} from '@/hooks/useCreditManagement';
 
 type ProcessingScreenNavigationProp = StackNavigationProp<
   RootStackParamList,
@@ -46,6 +50,13 @@ const ProcessingScreen: React.FC<Props> = ({navigation, route}) => {
   const [generatedStickers, setGeneratedStickers] = useState<GeneratedSticker[]>([]);
   const [isProcessing, setIsProcessing] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  const {
+    deductStickerGenerationCredit,
+    showUsageNotification,
+    lastUsage,
+    hideUsageNotification,
+  } = useCreditManagement();
 
   useEffect(() => {
     startProcessing();
@@ -83,6 +94,13 @@ const ProcessingScreen: React.FC<Props> = ({navigation, route}) => {
     }, 2000);
 
     try {
+      // Deduct credits for sticker generation
+      const creditResult = deductStickerGenerationCredit();
+      if (!creditResult.success) {
+        setError(creditResult.error || 'Insufficient credits');
+        return;
+      }
+
       // Convert image URI to base64 (simplified - in real app would handle properly)
       const imageData = selectedImageUri.split(',')[1] || selectedImageUri;
       const mimeType = 'image/jpeg';
@@ -119,44 +137,27 @@ const ProcessingScreen: React.FC<Props> = ({navigation, route}) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.title}>Creating Your Stickers</Text>
-        
-        {isProcessing && (
-          <>
-            <View style={styles.animationContainer}>
-              <ActivityIndicator size="large" color="#6366f1" />
-              <Text style={styles.loadingMessage}>
-                {LOADING_MESSAGES[currentMessageIndex]}
-              </Text>
-            </View>
+      <ScreenTransition type="slideUp" duration={600}>
+        <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
+          <Text style={styles.title}>Creating Your Stickers</Text>
+          
+          {isProcessing && (
+            <>
+              <AIProcessingAnimation
+                isProcessing={isProcessing}
+                progress={progress._value || 0}
+                style={styles.processingAnimation}
+              />
 
-            <View style={styles.progressContainer}>
-              <View style={styles.progressBar}>
-                <Animated.View
-                  style={[
-                    styles.progressFill,
-                    {
-                      width: progress.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: ['0%', '100%'],
-                      }),
-                    },
-                  ]}
-                />
+              <View style={styles.infoContainer}>
+                <Text style={styles.infoTitle}>What's happening?</Text>
+                <Text style={styles.infoItem}>• Analyzing your image</Text>
+                <Text style={styles.infoItem}>• Applying {selectedStyle?.name || style} style</Text>
+                <Text style={styles.infoItem}>• Generating 8 different emotions</Text>
+                <Text style={styles.infoItem}>• Optimizing for sticker use</Text>
               </View>
-              <Text style={styles.progressText}>Processing with AI...</Text>
-            </View>
-
-            <View style={styles.infoContainer}>
-              <Text style={styles.infoTitle}>What's happening?</Text>
-              <Text style={styles.infoItem}>• Analyzing your image</Text>
-              <Text style={styles.infoItem}>• Applying {selectedStyle?.name || style} style</Text>
-              <Text style={styles.infoItem}>• Generating 8 different emotions</Text>
-              <Text style={styles.infoItem}>• Optimizing for sticker use</Text>
-            </View>
-          </>
-        )}
+            </>
+          )}
 
         {error && (
           <View style={styles.errorContainer}>
@@ -207,7 +208,21 @@ const ProcessingScreen: React.FC<Props> = ({navigation, route}) => {
             </View>
           </View>
         )}
-      </ScrollView>
+        </ScrollView>
+      </ScreenTransition>
+
+      <CreditUsageNotification
+        visible={showUsageNotification}
+        onClose={hideUsageNotification}
+        onPurchasePress={() => {
+          hideUsageNotification();
+          navigation.navigate('CreditPurchase');
+        }}
+        creditsUsed={lastUsage?.creditsUsed || 0}
+        remainingCredits={lastUsage?.remainingCredits || 0}
+        action={lastUsage?.action || ''}
+        showPurchaseOption={lastUsage?.remainingCredits === 0 || (lastUsage?.remainingCredits || 0) <= 5}
+      />
     </SafeAreaView>
   );
 };
@@ -215,7 +230,7 @@ const ProcessingScreen: React.FC<Props> = ({navigation, route}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: COLORS.background,
   },
   content: {
     flex: 1,
@@ -227,44 +242,15 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1e293b',
+    color: COLORS.black,
     textAlign: 'center',
     marginBottom: 40,
   },
-  animationContainer: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  loadingMessage: {
-    fontSize: 16,
-    color: '#6366f1',
-    fontWeight: '500',
-    marginTop: 20,
-    textAlign: 'center',
-  },
-  progressContainer: {
-    width: '100%',
-    marginBottom: 40,
-  },
-  progressBar: {
-    height: 8,
-    backgroundColor: '#e2e8f0',
-    borderRadius: 4,
-    overflow: 'hidden',
-    marginBottom: 8,
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#6366f1',
-    borderRadius: 4,
-  },
-  progressText: {
-    fontSize: 14,
-    color: '#64748b',
-    textAlign: 'center',
+  processingAnimation: {
+    marginBottom: 20,
   },
   infoContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.white,
     padding: 20,
     borderRadius: 12,
     width: '100%',
@@ -281,12 +267,12 @@ const styles = StyleSheet.create({
   infoTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1e293b',
+    color: COLORS.black,
     marginBottom: 12,
   },
   infoItem: {
     fontSize: 14,
-    color: '#64748b',
+    color: COLORS.secondary,
     marginBottom: 6,
   },
   errorContainer: {
@@ -299,23 +285,23 @@ const styles = StyleSheet.create({
   errorTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#dc2626',
+    color: COLORS.error,
     marginBottom: 8,
   },
   errorMessage: {
     fontSize: 14,
-    color: '#dc2626',
+    color: COLORS.error,
     textAlign: 'center',
     marginBottom: 16,
   },
   retryButton: {
-    backgroundColor: '#dc2626',
+    backgroundColor: COLORS.error,
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
   },
   retryButtonText: {
-    color: '#fff',
+    color: COLORS.white,
     fontWeight: '600',
   },
   stickerGrid: {
@@ -325,7 +311,7 @@ const styles = StyleSheet.create({
   gridTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1e293b',
+    color: COLORS.black,
     marginBottom: 16,
     textAlign: 'center',
   },
@@ -341,17 +327,17 @@ const styles = StyleSheet.create({
   },
   loadingSticker: {
     flex: 1,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: COLORS.gray[100],
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#e5e7eb',
+    borderColor: COLORS.gray[200],
     borderStyle: 'dashed',
   },
   completedSticker: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.white,
     borderRadius: 8,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -380,7 +366,7 @@ const styles = StyleSheet.create({
   emotionLabel: {
     fontSize: 10,
     fontWeight: '500',
-    color: '#374151',
+    color: COLORS.gray[700],
     textAlign: 'center',
     paddingVertical: 4,
   },

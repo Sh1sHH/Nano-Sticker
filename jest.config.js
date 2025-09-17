@@ -5,7 +5,7 @@ module.exports = {
     'node_modules/(?!(react-native|@react-native|react-native-vector-icons|react-native-share|react-native-image-picker|zustand)/)',
   ],
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
-  moduleNameMapping: {
+  moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
 };
