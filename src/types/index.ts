@@ -77,7 +77,29 @@ export interface ImageProcessingOptions {
   quality: number;
   maxWidth: number;
   maxHeight: number;
-  format: 'jpeg' | 'png';
+  format: 'jpeg' | 'png' | 'webp';
+}
+
+export interface ImageMetadata {
+  width: number;
+  height: number;
+  size: number;
+  format: string;
+  uri: string;
+}
+
+export interface CompressionResult {
+  uri: string;
+  originalSize: number;
+  compressedSize: number;
+  compressionRatio: number;
+  metadata: ImageMetadata;
+}
+
+export interface ValidationResult {
+  isValid: boolean;
+  errors: string[];
+  metadata?: ImageMetadata;
 }
 
 export interface StickerEffect {
@@ -88,4 +110,41 @@ export interface StickerEffect {
     blur?: number;
     offset?: { x: number; y: number };
   };
+}
+
+export interface ExportFormat {
+  type: 'png' | 'jpeg' | 'webp' | 'whatsapp';
+  quality?: number;
+  size?: { width: number; height: number };
+}
+
+export interface WhatsAppStickerPack {
+  identifier: string;
+  name: string;
+  publisher: string;
+  trayImageFile: string;
+  publisherEmail?: string;
+  publisherWebsite?: string;
+  privacyPolicyWebsite?: string;
+  licenseAgreementWebsite?: string;
+  stickers: WhatsAppSticker[];
+}
+
+export interface WhatsAppSticker {
+  imageFile: string;
+  emojis: string[];
+}
+
+export interface ExportOptions {
+  format: ExportFormat;
+  saveToGallery: boolean;
+  shareImmediately: boolean;
+  whatsappPackName?: string;
+}
+
+export interface ExportResult {
+  success: boolean;
+  filePath?: string;
+  error?: string;
+  packId?: string;
 }
